@@ -13,6 +13,13 @@ test -p "$1" || {
 
 declare -A client_socks
 
+cleanup() {
+	echo Closing client pipes
+	write_clients exit
+	rm "${client_socks[@]}"
+}
+trap cleanup 0
+
 # Send data to a client
 write_client() {
 	local client_id="$1"

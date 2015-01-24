@@ -11,7 +11,10 @@ YELLOW="\e[1;33m"
 RESET="\e[0m"
 
 # Connect to server
-exec 3<> /dev/tcp/$1/$2
+exec 3<> /dev/tcp/$1/$2 || {
+	echo "Unable to connect to server"
+	exit 1
+}
 
 # Read commands from server
 {
@@ -49,7 +52,7 @@ fix_color() {
 	stty echo
 	exit
 }
-trap fix_color INT TERM
+trap fix_color 0
 
 # Read from user's keyboard
 while read -rn 1 char

@@ -6,6 +6,8 @@ test $# -ge 2 || {
 	exit 1
 }
 
+client_args="$@"
+
 # Connect to server
 exec 3<> /dev/tcp/$1/$2 || {
 	echo "Unable to connect to server"
@@ -30,11 +32,18 @@ handle_connection_status() {
 	esac
 }
 
+# Handle chat from other user
+handle_chat() {
+	local sender_id="$1"; shift
+	echo "<$sender_id>: $@"
+}
+
 # Handle command sent by server
 handle_server_command() {
 	local cmd="$1"; shift
 	case "$cmd" in
 		conn) handle_connection_status "$1";;
+		chat) handle_chat "$@";;
 		*) echo from server: $cmd $@;;
 	esac
 }
@@ -75,6 +84,21 @@ fix_color() {
 trap fix_color 0
 trap 'exit' TERM
 
+confirm() {
+	echo $@
+	read -rn1 resp && case $resp in y|Y|'') return 0; esac
+	return 1
+}
+
+confirm_restart() {
+	confirm 'Really restart? [Y/n]' &&
+		exec "$0" $client_args
+}
+
+confirm_quit() {
+	confirm 'Really quit? [Y/n]' && exit
+}
+
 # Read from user's keyboard
 while read -rn 1 char
 do
@@ -84,5 +108,7 @@ do
 		h) player_move 0 -1;;
 		l) player_move 0 1;;
 		t) player_chat;;
+		r) confirm_restart;;
+		q) confirm_quit;;
 	esac
 done

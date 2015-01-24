@@ -14,10 +14,13 @@ RESET="\e[0m"
 exec 3<> /dev/tcp/$1/$2
 
 # Read commands from server
+{
 while read -r cmd data
 do
 	echo from server: $cmd $data
-done &
+done <&3
+echo done reading from server
+}&
 
 server_write() {
 	echo $player_id $@ >&3

@@ -18,18 +18,15 @@ exec 3>"$1"
 echo conn connected
 
 # Read commands from server
-{
-	client_sock=$(mktemp -u)
-	mkfifo "$client_sock"
-	trap "rm $client_sock" INT
-	# Notify server that we are here
-	echo "$player_id" "$client_sock" >&3
-	# Read responses from server
-	cat "$client_sock"
-	echo conn disconnected
-	exit
-} &
-trap "kill -TERM $!" EXIT INT
+client_sock=$(mktemp -u)
+mkfifo "$client_sock"
+# Notify server that we are here
+echo $player_id new $client_sock >&3
+# Read responses from server
+while exec 4<"$client_sock"
+do cat <&4
+done &
+trap "rm $client_sock; kill -9 $!; exit" EXIT INT
 
 # Transfer user commands to server
 while read cmd

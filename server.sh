@@ -34,6 +34,16 @@ write_clients() {
 	done
 }
 
+# Send data to all clients except one
+write_clients_except() {
+	local client_sock_skip="${client_socks[$1]}"; shift
+	local client_sock
+	for client_sock in "${client_socks[@]}"
+	do [[ "$client_sock" != "$client_sock_skip" ]] &&
+		echo "$@" >> "$client_sock"
+	done
+}
+
 # New client connected
 handle_new() {
 	local client_id="$1"
@@ -44,6 +54,7 @@ handle_new() {
 
 	client_socks[$client_id]=$sock
 	write_client $client_id conn connected
+	write_client $client_id id $client_id
 }
 
 # Client quit
@@ -63,7 +74,7 @@ handle_move() {
 
 # Player sent chat
 handle_chat() {
-	write_clients chat $@
+	write_clients_except "$1" chat $@
 }
 
 # Client sent unknown command

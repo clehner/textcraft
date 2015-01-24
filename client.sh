@@ -7,6 +7,7 @@ test $# -ge 2 || {
 }
 
 client_args="$@"
+player_id=
 
 # Connect to server
 exec 3<> /dev/tcp/$1/$2 || {
@@ -61,6 +62,7 @@ handle_server_command() {
 		chat) handle_chat "$@";;
 		join) handle_join "$@";;
 		quit) handle_quit "$@";;
+		id) player_id="$@";;
 		*) echo from server: $cmd $@;;
 	esac
 }
@@ -75,7 +77,7 @@ handle_server_command() {
 child_pid=$!
 
 server_write() {
-	echo $player_id $@ >&3
+	echo $@ >&3
 }
 
 player_move() {
@@ -90,7 +92,7 @@ player_move() {
 
 player_chat() {
 	stty echo
-	echo -n 'chat: '
+	echo -n "<$player_id> "
 	read -r msg
 	server_write chat "$msg"
 	stty -echo

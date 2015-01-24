@@ -39,7 +39,7 @@ handle_connection_status() {
 # Handle chat from other user
 handle_chat() {
 	local sender_id="$1"; shift
-	echo "<$sender_id>: $@"
+	echo "<$sender_id> $@"
 }
 
 # A user joined
@@ -54,35 +54,12 @@ handle_quit() {
 	echo "$sender_id left the game"
 }
 
-# Handle command sent by server
-handle_server_command() {
-	local cmd="$1"; shift
-	case "$cmd" in
-		conn) handle_connection_status "$1";;
-		chat) handle_chat "$@";;
-		join) handle_join "$@";;
-		quit) handle_quit "$@";;
-		id) player_id="$@";;
-		*) echo from server: $cmd $@;;
-	esac
-}
-
-# Read commands from server
-{
-	while read -r args
-	do handle_server_command $args
-	done <&3
-	exit_child
-} &
-child_pid=$!
-
 server_write() {
 	echo $@ >&3
 }
 
 player_move() {
 	server_write move "$1" "$2"
-	echo move! $1 $2
 	case "$1 $2" in
 		"-1 0")
 			#echo -e "\e[<3>Aok"
@@ -90,11 +67,16 @@ player_move() {
 	esac
 }
 
-player_chat() {
+player_send_chat() {
+	[[ -n "$@" ]] &&
+		server_write chat $@
+}
+
+user_chat() {
 	stty echo
-	echo -n "<$player_id> "
+	echo chat_start
 	read -r msg
-	server_write chat "$msg"
+	echo chat_send $msg
 	stty -echo
 }
 
@@ -130,16 +112,48 @@ confirm_quit() {
 	fi
 }
 
-# Read from user's keyboard
-while read -rn 1 char
+{
+	# Read commands from server
+	{
+		sed -u 's/^/s_/' <&3
+		exit_child
+	} &
+	child_pid=$!
+
+	# Read from user's keyboard
+	while read -rn 1 char
+	do
+		case "$char" in
+			j) echo move 1 0;;
+			k) echo move -1 0;;
+			h) echo move 0 -1;;
+			l) echo move 0 1;;
+			t) user_chat;;
+			r) echo restart;;
+			q) echo quit;;
+		esac
+	done
+
+# Multiplex server and user input so that all state is handled in one subshell.
+} | while read -r cmd args
 do
-	case "$char" in
-		j) player_move 1 0;;
-		k) player_move -1 0;;
-		h) player_move 0 -1;;
-		l) player_move 0 1;;
-		t) player_chat;;
-		r) confirm_restart;;
-		q) confirm_quit;;
+	set -- "$args"
+	case "$cmd" in 
+		# server commands
+		s_chat) handle_chat $@;;
+		s_conn) handle_connection_status "$1";;
+		s_join) handle_join "$@";;
+		s_quit) handle_quit "$@";;
+		s_moved) echo move! $1 $2;;
+		s_id) player_id="$@";;
+		s_*) echo "<server> $cmd $@";;
+
+		# client commands
+		move) player_move "$@";;
+		chat_start) echo -n "<$player_id> ";;
+		chat_send) player_send_chat $@;;
+		quit) confirm_quit;;
+		restart) confirm_restart;;
+		*) echo unknown $cmd $args
 	esac
 done

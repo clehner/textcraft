@@ -15,7 +15,6 @@ player_id=p$$
 
 echo conn connecting
 exec 3>"$1"
-echo conn connected
 
 # Read commands from server
 client_sock=$(mktemp -u)
@@ -24,17 +23,20 @@ mkfifo "$client_sock"
 echo $player_id new $client_sock >&3
 # Read responses from server
 {
-	echo start reading from "$client_sock"
 	while exec 4<"$client_sock"
-	do sed -u '/^exit$/q' <&4
+	do sed -u '/^conn shutdown/q' <&4
 	done
-	echo responses from server done
+	echo conn disconnected
+	rm "$client_sock"
 } &
 trap "rm $client_sock; kill -9 $!" 0
 
 # Transfer user commands to server
-while read cmd
-do echo "$player_id" "$cmd"
-done >&3
+{
+	while read cmd
+	do echo $player_id $cmd
+	done
+	echo $player_id quit
+} >&3
 
 echo done

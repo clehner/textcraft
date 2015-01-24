@@ -6,24 +6,45 @@ test $# -ge 2 || {
 	exit 1
 }
 
-stty -echo
-YELLOW="\e[1;33m"
-RESET="\e[0m"
-
 # Connect to server
 exec 3<> /dev/tcp/$1/$2 || {
 	echo "Unable to connect to server"
 	exit 1
 }
 
+YELLOW="\e[1;33m"
+RESET="\e[0m"
+
+PID=$$
+
+# Handle connection from backend to server
+handle_connection_status() {
+	case "$1" in
+		connecting) echo 'Connecting to server';;
+		connected) echo 'Connection established';;
+		shutdown) echo 'Server shut down'
+			echo
+			# kill parent and subshell
+			kill $PID
+			exit;;
+	esac
+}
+
+# Handle command sent by server
+handle_server_command() {
+	local cmd="$1"; shift
+	case "$cmd" in
+		conn) handle_connection_status "$1";;
+		*) echo from server: $cmd $@;;
+	esac
+}
+
 # Read commands from server
 {
-while read -r cmd data
-do
-	echo from server: $cmd $data
-done <&3
-echo done reading from server
-}&
+	while read -r args
+	do handle_server_command $args
+	done <&3
+} &
 
 server_write() {
 	echo $player_id $@ >&3
@@ -50,9 +71,9 @@ player_chat() {
 stty -echo
 fix_color() {
 	stty echo
-	exit
 }
 trap fix_color 0
+trap 'exit' TERM
 
 # Read from user's keyboard
 while read -rn 1 char

@@ -15,8 +15,7 @@ declare -A client_socks
 
 cleanup() {
 	echo Closing client pipes
-	write_clients exit
-	rm "${client_socks[@]}"
+	write_clients conn shutdown
 }
 trap cleanup 0
 
@@ -43,7 +42,7 @@ handle_user_command() {
 	case "$cmd" in
 		new)
 			client_socks[$client_id]=$1
-			write_client $client_id welcome
+			write_client $client_id conn connected
 			;;
 		move)
 			write_client $client_id moved $@

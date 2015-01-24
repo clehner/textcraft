@@ -38,12 +38,26 @@ handle_chat() {
 	echo "<$sender_id>: $@"
 }
 
+# A user joined
+handle_join() {
+	local sender_id="$1"
+	echo "$sender_id joined the game"
+}
+
+# A user quit
+handle_quit() {
+	local sender_id="$1"
+	echo "$sender_id left the game"
+}
+
 # Handle command sent by server
 handle_server_command() {
 	local cmd="$1"; shift
 	case "$cmd" in
 		conn) handle_connection_status "$1";;
 		chat) handle_chat "$@";;
+		join) handle_join "$@";;
+		quit) handle_quit "$@";;
 		*) echo from server: $cmd $@;;
 	esac
 }

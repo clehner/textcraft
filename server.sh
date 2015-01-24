@@ -38,6 +38,10 @@ write_clients() {
 handle_new() {
 	local client_id="$1"
 	local sock="$2"
+
+	# Tell other players about new client
+	write_clients join $client_id
+
 	client_socks[$client_id]=$sock
 	write_client $client_id conn connected
 }

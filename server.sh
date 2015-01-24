@@ -11,13 +11,21 @@ test -p "$1" || {
 	exit 1
 }
 
-declare -a client_socks
+declare -A client_socks
 
 # Send data to a client
 write_client() {
 	local client_id="$1"
 	shift
-	echo $@ >> "${client_socks[$client_id]}"
+	echo $@ >> ${client_socks[$client_id]}
+}
+
+# Send data to all clients
+write_clients() {
+	local client_sock
+	for client_sock in "${client_socks[@]}"
+	do echo "$@" >> "$client_sock"
+	done
 }
 
 # Handle command sent by client
@@ -32,6 +40,9 @@ handle_user_command() {
 			;;
 		move)
 			write_client $client_id moved $@
+			;;
+		chat)
+			write_clients chat $client_id $@
 			;;
 		*)
 			write_client $client_id unknown $cmd

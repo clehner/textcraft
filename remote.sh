@@ -36,6 +36,14 @@ player_move() {
 	esac
 }
 
+player_chat() {
+	stty echo
+	echo -n 'chat: '
+	read -r msg
+	server_write chat "$msg"
+	stty -echo
+}
+
 stty -echo
 fix_color() {
 	stty echo
@@ -51,5 +59,6 @@ do
 		k) player_move -1 0;;
 		h) player_move 0 -1;;
 		l) player_move 0 1;;
+		t) player_chat;;
 	esac
 done

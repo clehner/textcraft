@@ -17,7 +17,13 @@ exec 3<> /dev/tcp/$1/$2 || {
 YELLOW="\e[1;33m"
 RESET="\e[0m"
 
-PID=$$
+parent_pid=$$
+
+exit_child() {
+	echo
+	kill $parent_pid
+	exit
+}
 
 # Handle connection from backend to server
 handle_connection_status() {
@@ -25,10 +31,7 @@ handle_connection_status() {
 		connecting) echo 'Connecting to server';;
 		connected) echo 'Connection established';;
 		shutdown) echo 'Server shut down'
-			echo
-			# kill parent and subshell
-			kill $PID
-			exit;;
+			exit_child;;
 	esac
 }
 
@@ -67,7 +70,9 @@ handle_server_command() {
 	while read -r args
 	do handle_server_command $args
 	done <&3
+	exit_child
 } &
+child_pid=$!
 
 server_write() {
 	echo $player_id $@ >&3
@@ -105,12 +110,22 @@ confirm() {
 }
 
 confirm_restart() {
-	confirm 'Really restart? [Y/n]' &&
+	if confirm 'Really restart? [Y/n]'
+	then
+		# close socket
+		kill $child_pid
+		# restart the program
 		exec "$0" $client_args
+	fi
 }
 
 confirm_quit() {
-	confirm 'Really quit? [Y/n]' && exit
+	if confirm 'Really quit? [Y/n]'
+	then
+		kill $child_pid
+		echo
+		exit
+	fi
 }
 
 # Read from user's keyboard

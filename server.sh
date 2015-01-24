@@ -46,6 +46,13 @@ handle_new() {
 	write_client $client_id conn connected
 }
 
+# Client quit
+handle_quit() {
+	local client_id="$1"
+	unset client_socks[$client_id]
+	write_clients quit $client_id
+}
+
 # Player wants to move
 handle_move() {
 	local client_id="$1"
@@ -75,6 +82,7 @@ handle_user_command() {
 		new) handle_new "$@";;
 		move) handle_move "$@";;
 		chat) handle_chat "$@";;
+		quit) handle_quit "$@";;
 		*) handle_unknown "$@";;
 	esac
 }

@@ -34,25 +34,44 @@ write_clients() {
 	done
 }
 
+# New client connected
+handle_new() {
+	local client_id="$1"
+	local sock="$2"
+	client_socks[$client_id]=$sock
+	write_client $client_id conn connected
+}
+
+# Player wants to move
+handle_move() {
+	local client_id="$1"
+	local dx="$2"
+	local dy="$3"
+	write_client $client_id moved $@
+}
+
+# Player sent chat
+handle_chat() {
+	write_clients chat $@
+}
+
+# Client sent unknown command
+handle_unknown() {
+	local client_id="$1"; shift
+	echo "Unknown command from $client_id: $@"
+}
+
 # Handle command sent by client
 handle_user_command() {
-	local client_id="$1"; shift
-	local cmd="$1"; shift
-	echo $client_id $cmd $@
+	# command format: client_id cmd args...
+	local client_id="$1"
+	local cmd="$2"
+	set -- "$client_id" "${@:3}"
 	case "$cmd" in
-		new)
-			client_socks[$client_id]=$1
-			write_client $client_id conn connected
-			;;
-		move)
-			write_client $client_id moved $@
-			;;
-		chat)
-			write_clients chat $client_id $@
-			;;
-		*)
-			write_client $client_id unknown $cmd
-			;;
+		new) handle_new "$@";;
+		move) handle_move "$@";;
+		chat) handle_chat "$@";;
+		*) handle_unknown "$@";;
 	esac
 }
 

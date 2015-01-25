@@ -10,9 +10,14 @@ cleanup() {
 	exit
 }
 
+if hash ncat 2>&- >&-
+then NC='ncat -k'
+else NC='nc --continuous'
+fi
+
 echo Starting network server on port ${PORT:=9000}
 {
-	nc --continuous -lp $PORT -e "./connection.sh $server_sock"
+	$NC -lp $PORT -e "./connection.sh $server_sock"
 	cleanup
 } &
 NC_PID=$!

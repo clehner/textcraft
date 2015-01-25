@@ -16,6 +16,8 @@ exec 3<> /dev/tcp/$1/$2 || {
 log=$(mktemp)
 exec 5<> "$log"
 
+chunks_dir=$(mktemp -d)
+
 YELLOW="\e[1;33m"
 COLOR_BG_BLACK="\e[40m"
 COLOR_RESET="\e[0m"
@@ -23,7 +25,7 @@ COLOR_RESET="\e[0m"
 parent_pid=$$
 
 # game info
-server_version=
+server_version=0
 chunk_width=
 chunk_height=
 
@@ -106,13 +108,20 @@ handle_position() {
 
 	players_x[$sender_id]=$x
 	players_y[$sender_id]=$y
-	echo $sender_id moved to $x $y
 
 	if [[ $sender_id == $player_id ]]
 	then
 		player_x=$x
 		player_y=$y
 	fi
+}
+
+# The server is sending us a chunk
+handle_chunk() {
+	local chunk=$1; shift
+	# save chunk to file
+	echo $@ | sed 's/%/\n/g' > "$chunks_dir/$chunk.txt"
+	echo got chunk $chunk: "$@" >&5
 }
 
 server_write() {
@@ -126,6 +135,10 @@ player_move() {
 player_send_chat() {
 	[[ -n "$@" ]] &&
 		server_write chat $@
+}
+
+request_chunks() {
+	server_write req_chunks "$@"
 }
 
 user_chat() {
@@ -158,27 +171,27 @@ user_restart() {
 	fi
 }
 
-# Print a game chunk
-print_chunk() {
-	local chunk_x=$1
-	local chunk_y=$2
-	local file="data/chunks/$chunk_x,$chunk_y.txt"
-	if [[ -s $file ]]
-	then cat $file
-	else echo "$empty_chunk"
-	fi
-}
+print_chunks() {
+	local file chunk_files missing_chunks
 
-print_chunk_files() {
 	# ensure the chunks exist
-	for file
-	do if ! [[ -s $file ]]
-	then
-	echo $file >> /tmp/empty-chunk
-	echo "$empty_chunk" > $file
-	fi done
+	for chunk
+	do
+		file="$chunks_dir/$chunk.txt"
+		if [[ ! -f "$file" ]]
+		then
+			# use blank chunk temporarily
+			echo "$empty_chunk" > "$file"
+			# ask server for chunk
+			missing_chunks="$missing_chunks $chunk"
+		fi
+		chunk_files="$chunk_files $file"
+	done
+
+	request_chunks "$missing_chunks"
+
 	# paste the chunks
-	paste -d '' $*
+	paste -d '' $chunk_files
 }
 
 # Position cursor on screen
@@ -264,8 +277,7 @@ draw_map() {
 	for ((y=chunk_top; y<chunk_bottom; y++))
 	do
 		#eval "echo '<(cat '{$chunk_left..$chunk_right}' $y)'"
-		eval "print_chunk_files 'data/chunks/'$x_range',$y.txt'"
-		#print_chunk $chunk_left $y
+		eval "print_chunks $x_range,$y"
 	done
 
 	draw_players $((width/2)) $((height/2)) \
@@ -305,7 +317,7 @@ redraw() {
 trap cleanup 0
 
 cleanup() {
-	rm "$log"
+	rm -rf "$log" "$chunks_dir"
 }
 
 {
@@ -325,6 +337,7 @@ cleanup() {
 			k) echo move 0 -1;;
 			h) echo move -1 0;;
 			l) echo move 1 0;;
+			c) echo chunk;;
 			t) user_chat;;
 			#r) user_restart;;
 			#q) user_quit;;
@@ -346,6 +359,7 @@ do
 		s_join) handle_join "$@";;
 		s_quit) handle_quit "$@";;
 		s_pos) handle_position $@;;
+		s_chunk) handle_chunk $@;;
 		s_*) echo "<server> $cmd $@";;
 
 		# client commands
@@ -359,6 +373,7 @@ do
 			#exec 3>&-
 			break;;
 		restart) echo restarting;;
+		chunk) echo requesting chunk; request_chunks 0,0;;
 		*) echo unknown $cmd $args
 	esac >&5
 

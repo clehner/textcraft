@@ -14,6 +14,7 @@ test -p "$1" || {
 version=0.0.1
 chunk_width=10
 chunk_height=5
+chunks_dir=data/chunks
 
 # pipes to client sockets
 declare -A client_socks
@@ -51,6 +52,19 @@ write_clients_except() {
 	do [[ "$client_sock" != "$client_sock_skip" ]] &&
 		echo "$@" >> "$client_sock"
 	done
+}
+
+# Read a chunk, suitable for sending
+read_chunk() {
+	local chunk=$1
+	local delim=$2
+	paste -sd "$delim" "$chunks_dir/$chunk.txt"
+}
+
+# Send a client a chunk
+send_chunk() {
+	# TODO: make sure client can see chunk
+	write_client $1 chunk $2 $(read_chunk $2 '%')
 }
 
 # New client connected
@@ -117,6 +131,14 @@ handle_unknown() {
 	echo "Unknown command from $client_id: $@"
 }
 
+# Client asked for chunks
+handle_req_chunks() {
+	local client_id="$1"; shift
+	for chunk
+	do send_chunk "$client_id" "$chunk"
+	done
+}
+
 # Handle command sent by client
 handle_user_command() {
 	# command format: client_id cmd args...
@@ -128,6 +150,7 @@ handle_user_command() {
 		move) handle_move "$@";;
 		chat) handle_chat "$@";;
 		quit) handle_quit "$@";;
+		req_chunks) handle_req_chunks $@;;
 		*) handle_unknown "$@";;
 	esac
 }

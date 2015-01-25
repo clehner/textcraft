@@ -6,9 +6,6 @@ test $# -ge 2 || {
 	exit 1
 }
 
-client_args="$@"
-player_id=
-
 # Connect to server
 exec 3<> /dev/tcp/$1/$2 || {
 	echo "Unable to connect to server"
@@ -18,7 +15,12 @@ exec 3<> /dev/tcp/$1/$2 || {
 YELLOW="\e[1;33m"
 RESET="\e[0m"
 
+player_id=
 parent_pid=$$
+
+# player positions
+declare -A players_x
+declare -A players_y
 
 exit_child() {
 	kill -TERM $parent_pid
@@ -44,12 +46,18 @@ handle_chat() {
 # A user joined
 handle_join() {
 	local sender_id="$1"
+	local x="$2"
+	local y="$3"
+	players_x[$sender_id]=$x
+	players_y[$sender_id]=$y
 	echo "$sender_id joined the game"
 }
 
 # A user quit
 handle_quit() {
 	local sender_id="$1"
+	unset players_x[$sender_id]
+	unset players_y[$sender_id]
 	echo "$sender_id left the game"
 }
 
@@ -123,8 +131,8 @@ user_restart() {
 			h) echo move 0 -1;;
 			l) echo move 0 1;;
 			t) user_chat;;
-			r) user_restart;;
-			q) user_quit;;
+			#r) user_restart;;
+			#q) user_quit;;
 		esac
 	done
 
@@ -140,7 +148,7 @@ do
 		s_conn) handle_connection_status "$1";;
 		s_join) handle_join "$@";;
 		s_quit) handle_quit "$@";;
-		s_moved) echo move! $1 $2;;
+		s_pos) echo pos! $1 $2;;
 		s_id) player_id="$@";;
 		s_*) echo "<server> $cmd $@";;
 

@@ -11,7 +11,12 @@ test -p "$1" || {
 	exit 1
 }
 
+# pipes to client sockets
 declare -A client_socks
+
+# player positions
+declare -A players_x
+declare -A players_y
 
 cleanup() {
 	echo Closing client pipes
@@ -48,20 +53,26 @@ write_clients_except() {
 handle_new() {
 	local client_id="$1"
 	local sock="$2"
+	local x=0
+	local y=0
 
 	# Tell other players about new client
 	write_clients join $client_id
 
 	client_socks[$client_id]=$sock
+	players_x[$client_id]=$x
+	players_y[$client_id]=$y
 	write_client $client_id conn connected
 	write_client $client_id id $client_id
-	echo join "(${#client_socks[@]})" $client_id
+	echo join "(${#client_socks[@]})" $client_id $x $y
 }
 
 # Client quit
 handle_quit() {
 	local client_id="$1"
 	unset client_socks[$client_id]
+	unset players_x[$client_id]
+	unset players_y[$client_id]
 	write_clients quit $client_id
 	echo quit "(${#client_socks[@]})" $client_id
 }
@@ -71,7 +82,13 @@ handle_move() {
 	local client_id="$1"
 	local dx="$2"
 	local dy="$3"
-	write_client $client_id moved $@
+
+	# update position
+	((y=players_y[client_id]=dy+players_y[client_id]))
+	((x=players_x[client_id]=dx+players_x[client_id]))
+
+	# TODO: verify that move is valid
+	write_client $client_id pos $x $y
 }
 
 # Player sent chat

@@ -67,7 +67,7 @@ handle_new() {
 	players_x[$client_id]=$x
 	players_y[$client_id]=$y
 	write_client $client_id conn connected
-	write_client $client_id id $client_id
+	write_client $client_id player_info $client_id $x $y
 	write_client $client_id info $version \
 		$chunk_width $chunk_height
 	echo join "(${#client_socks[@]})" $client_id $x $y

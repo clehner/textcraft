@@ -84,6 +84,13 @@ handle_join() {
 	echo "$sender_id joined the game"
 }
 
+# Get initial player info from server
+handle_player_info() {
+	player_id="$1"
+	player_x="$2"
+	player_y="$3"
+}
+
 # A user quit
 handle_quit() {
 	local sender_id="$1"
@@ -307,12 +314,12 @@ do
 	case "$cmd" in 
 		# server commands
 		s_info) handle_info $@;;
+		s_player_info) handle_player_info $@;;
 		s_chat) handle_chat $@;;
 		s_conn) handle_connection_status "$1";;
 		s_join) handle_join "$@";;
 		s_quit) handle_quit "$@";;
 		s_pos) handle_position $@;;
-		s_id) player_id="$@";;
 		s_*) echo "<server> $cmd $@";;
 
 		# client commands

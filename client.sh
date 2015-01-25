@@ -23,6 +23,7 @@ COLOR_BG_BLACK="\e[40m"
 COLOR_BG_GREEN="\e[42m"
 COLOR_BG_CYAN="\e[46m"
 COLOR_FG_BLUE="\e[34m"
+COLOR_FG_BLACK_BOLD="\e[1;30m"
 COLOR_RESET="\e[0m"
 
 parent_pid=$$
@@ -231,8 +232,8 @@ draw_players() {
 		((x < 0 || x > width || y < 0 || y > height)) && continue
 
 		if [[ $id == $player_id ]]
-		then color=$COLOR_FG_BLUE$COLOR_BG_GREEN
-		else color=$COLOR_FG_BLUE$COLOR_BG_CYAN
+		then color=$COLOR_FG_BLACK_BOLD$COLOR_BG_GREEN
+		else color=$COLOR_FG_BLACK_BOLD$COLOR_BG_CYAN
 		fi
 
 		direction="${players_direction[$id]}"

@@ -12,7 +12,7 @@ test -p "$1" || {
 }
 
 version=0.0.1
-chunk_width=11
+chunk_width=10
 chunk_height=5
 
 # pipes to client sockets

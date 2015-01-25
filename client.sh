@@ -17,14 +17,15 @@ log=$(mktemp)
 exec 5<> "$log"
 
 YELLOW="\e[1;33m"
-RESET="\e[0m"
+COLOR_BG_BLACK="\e[40m"
+COLOR_RESET="\e[0m"
 
 parent_pid=$$
 
 # game info
 server_version=
-chunk_width=11
-chunk_height=5
+chunk_width=
+chunk_height=
 
 # local player info
 player_id=
@@ -42,7 +43,8 @@ empty_chunk=
 
 gen_empty_chunk() {
 	for ((x=0; x<chunk_height; x++))
-	do printf "%${chunk_width}s\n" | sed 's/ /./g'
+	#do printf "$COLOR_BG_BLACK%${chunk_width}s$COLOR_RESET\n"
+	do printf "%${chunk_width}s\n"
 	done
 }
 
@@ -162,6 +164,18 @@ print_chunk() {
 	fi
 }
 
+print_chunk_files() {
+	# ensure the chunks exist
+	for file
+	do if ! [[ -s $file ]]
+	then
+	echo $file >> /tmp/empty-chunk
+	echo "$empty_chunk" > $file
+	fi done
+	# paste the chunks
+	paste -d '' $*
+}
+
 # Position cursor on screen
 pos_cursor() {
 	echo -ne "\e[$1;$2H"
@@ -173,7 +187,11 @@ draw_map() {
 	local offset_y="$2"
 	local width="$3"
 	local height="$4"
-	local viewport_x viewport_y
+	local chunk_left chunk_right chunk_top chunk_bottom
+	local viewport_left viewport_right viewport_top viewport_bottom
+	local files
+	local header_height=2
+	((height -= header_height))
 
 	# get viewport map rect
 	((viewport_left=player_x-(width/2)))
@@ -181,54 +199,47 @@ draw_map() {
 	((viewport_top=player_y-(height/2)))
 	((viewport_bottom=player_y+(height/2)))
 
-	echo height $height $((viewport_bottom-viewport_top))
+	#echo height $height $((viewport_bottom-viewport_top))
 
 	#echo player: $player_x $player_y
 
 	#echo viewport x: $viewport_left $viewport_right
 	#echo viewport y: $viewport_top $viewport_bottom
-
-	# calculate amount that needs to be trimmed
-	((clip_left=viewport_left % chunk_width))
-	((clip_right=viewport_right % chunk_width))
-	((clip_top=viewport_top % chunk_height))
-	((clip_bottom=viewport_bottom % chunk_height))
-	#((clip_bottom=chunk_height - (viewport_bottom-(chunk_bottom*chunk_height))))
-
-	# correct sign differences
-	((viewport_left < 0)) && ((clip_left=chunk_width-clip_left))
-	#((viewport_right > 0)) &&
-	((clip_right=chunk_width-clip_right))
-
-	((viewport_top < 0)) && ((clip_top=chunk_height-clip_top))
-
-	if ((viewport_bottom > 0))
-	then ((clip_bottom=chunk_height-clip_bottom))
-	else ((clip_bottom=chunk_height+clip_bottom))
-	fi
+	#((chunks_width=width/chunk_width))
+	#((chunks_height=height/chunk_height))
 
 	((chunk_left=viewport_left/chunk_width))
-	((chunk_right=viewport_right/chunk_width))
 	((chunk_top=viewport_top/chunk_height))
-	((chunk_bottom=viewport_bottom/chunk_height))
+	((chunk_right=chunk_left + width/chunk_width))
+	((chunk_bottom=chunk_top + height/chunk_height))
 
-	echo viewport x $viewport_left $viewport_right
-	echo chunk height: $((chunk_bottom-chunk_top))
-	echo chunk width: $((chunk_right-chunk_left))
-	echo clip x: $clip_left $clip_right
-	echo clip y: $clip_top $clip_bottom
-	echo height: $(((chunk_bottom-chunk_top)*chunk_height - clip_top - clip_bottom))
+	echo viewport: $viewport_left,$viewport_top .. $viewport_right,$viewport_bottom
+	#echo viewport x $viewport_left $viewport_right
+	#echo viewport y $viewport_top $viewport_bottom
+	#echo chunk height: $((chunk_bottom-chunk_top))
+	#echo chunk width: $((chunk_right-chunk_left))
+	#echo height: $(((chunk_bottom-chunk_top)*chunk_height))
+	#echo width: $(((chunk_right-chunk_left)*chunk_width))
+	#echo chunk x: $chunk_left $chunk_right
+	#echo chunk y: $chunk_top $chunk_bottom
+	#echo chunks: $chunk_left,$chunk_top .. $chunk_right,$chunk_bottom
+	echo chunk width: $(((chunk_right-chunk_left)*chunk_width)) $width
 
+	#echo chunk y: $chunk_top $chunk_bottom
+	x_range="{$chunk_left..$chunk_right}"
 	for ((y=chunk_top; y<chunk_bottom; y++))
 	do
-		:
-		#local files
-		#eval "files='print_chunk '{$chunk_left..$chunk_right}' $y'"
+		#eval "echo '<(cat '{$chunk_left..$chunk_right}' $y)'"
+		eval "print_chunk_files 'data/chunks/'$x_range',$y.txt'"
 		#print_chunk $chunk_left $y
 	done
 
 	#echo chunk x: {$chunk_left..$chunk_right}
 	#echo chunk y: {$chunk_top..$chunk_bottom}
+}
+
+repeat_str() {
+	printf "$1"'%.s' $(eval "echo {1.."$(($2))"}")
 }
 
 # Draw the interface
@@ -239,12 +250,15 @@ redraw() {
 
 	# erase display
 	echo -ne "\e[2J"
+	#echo -ne "\e[2J\ec"
+	pos_cursor 0 0
 
-	draw_map 0 0 $cols $((lines-log_height-1))
+	draw_map 0 0 $((cols-1)) $((lines-log_height-1))
 
-	echo =========
+	echo -ne '\e(0'
+	repeat_str q $cols
+	echo -e '\e(B'
 	tail -n $log_height "$log"
-	pos_cursor 2 0
 }
 
 #trap 'exit' TERM

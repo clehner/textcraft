@@ -38,6 +38,11 @@ connect to the server
 ./client.sh localhost $PORT
 ```
 
+## keys
+
+- `h`/`j`/`k`/`l`: move around
+- `t`: chat
+
 ## known issues
 
 - connections don't always close cleanly. when restarting the server, you may

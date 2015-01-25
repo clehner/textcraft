@@ -129,8 +129,7 @@ player_send_chat() {
 }
 
 user_chat() {
-	echo chat_start
-	read -r msg
+	read -rep '> ' msg
 	echo chat_send $msg
 }
 
@@ -351,8 +350,7 @@ do
 
 		# client commands
 		move) player_move "$@";;
-		chat_start) echo -n "> ";;
-		chat_send) player_send_chat $@;;
+		chat_send) echo -en '\r'; player_send_chat $@;;
 		confirm) echo -n $@;;
 		echo) echo $$ $@;;
 		quit) echo exiting $parent_pid

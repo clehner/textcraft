@@ -108,7 +108,7 @@ handle_move() {
 
 # Player sent chat
 handle_chat() {
-	write_clients_except "$1" chat $@
+	write_clients chat $@
 }
 
 # Client sent unknown command

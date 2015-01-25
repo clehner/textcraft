@@ -11,6 +11,10 @@ test -p "$1" || {
 	exit 1
 }
 
+version=0.0.1
+chunk_width=11
+chunk_height=5
+
 # pipes to client sockets
 declare -A client_socks
 
@@ -64,6 +68,8 @@ handle_new() {
 	players_y[$client_id]=$y
 	write_client $client_id conn connected
 	write_client $client_id id $client_id
+	write_client $client_id info $version \
+		$chunk_width $chunk_height
 	echo join "(${#client_socks[@]})" $client_id $x $y
 }
 

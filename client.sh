@@ -12,15 +12,39 @@ exec 3<> /dev/tcp/$1/$2 || {
 	exit 1
 }
 
+# Open log
+log=$(mktemp)
+exec 5<> "$log"
+
 YELLOW="\e[1;33m"
 RESET="\e[0m"
 
-player_id=
 parent_pid=$$
+
+# game info
+server_version=
+chunk_width=11
+chunk_height=5
+
+# local player info
+player_id=
+player_x=
+player_y=
 
 # player positions
 declare -A players_x
 declare -A players_y
+
+# viewer info
+cols=
+lines=
+empty_chunk=
+
+gen_empty_chunk() {
+	for ((x=0; x<chunk_height; x++))
+	do printf "%${chunk_width}s\n" | sed 's/ /./g'
+	done
+}
 
 exit_child() {
 	kill -TERM $parent_pid
@@ -35,6 +59,14 @@ handle_connection_status() {
 		shutdown) echo 'Server shut down'
 			exit_child;;
 	esac
+}
+
+# Read info about the game
+handle_info() {
+	server_version=$1
+	chunk_width=$2
+	chunk_height=$3
+	empty_chunk=$(gen_empty_chunk)
 }
 
 # Handle chat from other user
@@ -67,6 +99,12 @@ handle_position() {
 	players_x[$sender_id]=$x
 	players_y[$sender_id]=$y
 	echo $sender_id moved to $x $y
+
+	if [[ $sender_id == $player_id ]]
+	then
+		player_x=$x
+		player_y=$y
+	fi
 }
 
 server_write() {
@@ -113,8 +151,93 @@ user_restart() {
 	fi
 }
 
+# Print a game chunk
+print_chunk() {
+	local chunk_x=$1
+	local chunk_y=$2
+	local file="data/chunks/$chunk_x,$chunk_y.txt"
+	if [[ -s $file ]]
+	then cat $file
+	else echo "$empty_chunk"
+	fi
+}
+
+# Position cursor on screen
+pos_cursor() {
+	echo -ne "\e[$1;$2H"
+}
+
+# Draw the game map
+draw_map() {
+	local offset_x="$1"
+	local offset_y="$2"
+	local width="$3"
+	local height="$4"
+	local viewport_x viewport_y
+
+	# get viewport map rect
+	((viewport_left=player_x-(width/2)))
+	((viewport_top=player_y-(height/2)))
+	((viewport_right=player_x+(width/2)-1))
+	((viewport_bottom=player_y+(height/2)-1))
+
+	#echo player: $player_x $player_y
+
+	#echo viewport x: $viewport_left $viewport_right
+	#echo viewport y: $viewport_top $viewport_bottom
+
+	# get viewport chunk rect
+	((chunk_left=viewport_left/chunk_width))
+	((chunk_top=viewport_top/chunk_height))
+	((chunk_right=viewport_right/chunk_width))
+	((chunk_bottom=viewport_bottom/chunk_height))
+
+	((clip_top=viewport_top % chunk_height))
+	((clip_left=viewport_left % chunk_width))
+	((clip_right=viewport_right % chunk_width))
+	((clip_bottom=viewport_bottom % chunk_height))
+
+	#echo chunk height: $((chunk_top-chunk_bottom))
+	#echo chunk width: $((chunk_right-chunk_left))
+	#echo clip x: $clip_left $clip_right
+	#echo clip y: $clip_top $clip_bottom
+	#echo sums: $((clip_top+clip_bottom)) $((clip_left+clip_right))
+
+	for ((y=chunk_top; y<chunk_bottom; y++))
+	do
+		:
+		#local files
+		#eval "files='print_chunk '{$chunk_left..$chunk_right}' $y'"
+		print_chunk $chunk_left $y
+	done
+
+	#echo chunk x: {$chunk_left..$chunk_right}
+	#echo chunk y: {$chunk_top..$chunk_bottom}
+}
+
+# Draw the interface
+redraw() {
+	cols=$(tput cols)
+	lines=$(tput lines)
+	local log_height=5
+
+	# erase display
+	echo -ne "\e[2J"
+
+	draw_map 0 0 $cols $((lines-log_height-1))
+
+	echo =========
+	tail -n $log_height "$log"
+	pos_cursor 2 0
+}
+
 #trap 'exit' TERM
 #trap "exec 3>&-" 0
+trap cleanup 0
+
+cleanup() {
+	rm "$log"
+}
 
 {
 	# Read commands from server
@@ -147,6 +270,7 @@ do
 	set -- "$args"
 	case "$cmd" in 
 		# server commands
+		s_info) handle_info $@;;
 		s_chat) handle_chat $@;;
 		s_conn) handle_connection_status "$1";;
 		s_join) handle_join "$@";;
@@ -157,7 +281,7 @@ do
 
 		# client commands
 		move) player_move "$@";;
-		chat_start) echo -n "<$player_id> ";;
+		chat_start) echo -n "> ";;
 		chat_send) player_send_chat $@;;
 		confirm) echo -n $@;;
 		echo) echo $$ $@;;
@@ -168,7 +292,8 @@ do
 			break;;
 		restart) echo restarting;;
 		*) echo unknown $cmd $args
-	esac
+	esac >&5
+	redraw
 done
 }
 

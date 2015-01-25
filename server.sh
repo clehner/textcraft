@@ -33,7 +33,7 @@ trap cleanup 0
 write_client() {
 	local client_id="$1"
 	shift
-	echo $@ >> ${client_socks[$client_id]}
+	echo "$@" >> ${client_socks[$client_id]}
 }
 
 # Send data to all clients
@@ -54,17 +54,15 @@ write_clients_except() {
 	done
 }
 
-# Read a chunk, suitable for sending
-read_chunk() {
-	local chunk=$1
-	local delim=$2
-	paste -sd "$delim" "$chunks_dir/$chunk.txt"
-}
-
 # Send a client a chunk
 send_chunk() {
 	# TODO: make sure client can see chunk
-	write_client $1 chunk $2 $(read_chunk $2 '%')
+	local chunk_file="$chunks_dir/$2.txt"
+	if [[ -s "$chunk_file" ]]
+	then
+		local chunk="$(tr '\n ' '%$' <$chunk_file)"
+		write_client $1 chunk $2 "$chunk"
+	fi
 }
 
 # New client connected

@@ -120,8 +120,7 @@ handle_position() {
 handle_chunk() {
 	local chunk=$1; shift
 	# save chunk to file
-	echo $@ | sed 's/%/\n/g' > "$chunks_dir/$chunk.txt"
-	echo got chunk $chunk: "$@" >&5
+	echo -n $* | tr '%$' '\n ' > "$chunks_dir/$chunk.txt"
 }
 
 server_write() {
@@ -349,7 +348,7 @@ cleanup() {
 	trap "kill -TERM $parent_pid; exec 3>&-" 0
 while read -r cmd args
 do
-	set -- "$args"
+	set -- $args
 	case "$cmd" in 
 		# server commands
 		s_info) handle_info $@;;

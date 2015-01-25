@@ -42,6 +42,7 @@ declare -A players_y
 cols=
 lines=
 empty_chunk=
+paused=
 
 gen_empty_chunk() {
 	for ((x=0; x<chunk_height; x++))
@@ -366,6 +367,8 @@ do
 		s_quit) handle_quit "$@";;
 		s_pos) handle_position $@;;
 		s_chunk) handle_chunk $@;;
+		s_pause) paused=1;;
+		s_resume) paused=;;
 		s_*) echo "<server> $cmd $@";;
 
 		# client commands
@@ -383,8 +386,8 @@ do
 		*) echo unknown $cmd $args
 	esac >&5
 
-	# buffer redraw
-	redraw 2>&5 | sed 'H;$!d;x'
+	# buffered redraw
+	[[ -z "$paused" ]] && redraw | sed 'H;$!d;x'
 done
 }
 

@@ -132,9 +132,13 @@ handle_unknown() {
 # Client asked for chunks
 handle_req_chunks() {
 	local client_id="$1"; shift
+	# If there are multiple chunks, tell the client
+	# not to redraw until we send them all.
+	[[ $# -gt 1 ]] && write_client $client_id pause
 	for chunk
 	do send_chunk "$client_id" "$chunk"
 	done
+	[[ $# -gt 1 ]] && write_client $client_id resume
 }
 
 # Handle command sent by client

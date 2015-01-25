@@ -29,7 +29,7 @@ requirements:
 start the server
 
 ```
-[PORT=9000] ./server.sh
+[PORT=9000] ./serve.sh
 ```
 
 connect to the server

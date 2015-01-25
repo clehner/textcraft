@@ -185,7 +185,41 @@ print_chunk_files() {
 
 # Position cursor on screen
 pos_cursor() {
-	echo -ne "\e[$1;$2H"
+	echo -ne "\e[$2;$1H"
+}
+
+# Superimpose players onto map
+draw_players() {
+	local offset_x="$1"
+	local offset_y="$2"
+	local left="$3"
+	local top="$4"
+	local right="$5"
+	local bottom="$6"
+	local x y
+
+	# get position of player relative to viewport
+	((x=player_x-left))
+	((y=player_y-top))
+
+	# save cursor
+	echo -ne '\e7'
+
+	# set character
+	pos_cursor $x $y
+	echo -n '@'
+	
+	# restore cursor
+	echo -ne '\e8'
+	return
+
+	for player_id in "${players_x[@]}"
+	do
+
+		${players_x[$player_id]}
+		${players_y[$player_id]}
+
+	done
 }
 
 # Draw the game map
@@ -199,6 +233,7 @@ draw_map() {
 	local files
 	local header_height=2
 	((height -= header_height))
+	
 
 	# get viewport map rect
 	((viewport_left=player_x-(width/2)))
@@ -219,6 +254,11 @@ draw_map() {
 	((chunk_top=viewport_top/chunk_height))
 	((chunk_right=chunk_left + width/chunk_width))
 	((chunk_bottom=chunk_top + height/chunk_height))
+
+	((full_left=chunk_left*chunk_width))
+	((full_top=chunk_top*chunk_height))
+	((full_right=chunk_right*chunk_width))
+	((full_bottom=chunk_bottom*chunk_height))
 
 	echo $player_x,$player_y
 	#echo viewport: $viewport_left,$viewport_top .. $viewport_right,$viewport_bottom
@@ -244,8 +284,10 @@ draw_map() {
 		#print_chunk $chunk_left $y
 	done
 
-	#echo chunk x: {$chunk_left..$chunk_right}
-	#echo chunk y: {$chunk_top..$chunk_bottom}
+	draw_players $((width/2)) $((height/2)) \
+		$full_left $full_top $full_right $full_bottom
+
+	# return unused space
 	return $((height-chunks_height))
 }
 

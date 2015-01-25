@@ -253,7 +253,8 @@ draw_map() {
 	local chunk_left chunk_right chunk_top chunk_bottom
 	local viewport_left viewport_right viewport_top viewport_bottom
 	local files
-	local header_height=2
+	local header_height=1
+	local status
 	((height -= header_height))
 
 	if ((chunk_height==0))
@@ -289,7 +290,6 @@ draw_map() {
 	((full_right=chunk_right*chunk_width))
 	((full_bottom=chunk_bottom*chunk_height))
 
-	echo $player_x,$player_y
 	#echo viewport: $viewport_left,$viewport_top .. $viewport_right,$viewport_bottom
 	#echo viewport x $viewport_left $viewport_right
 	#echo viewport y $viewport_top $viewport_bottom
@@ -311,6 +311,11 @@ draw_map() {
 		#eval "echo '<(cat '{$chunk_left..$chunk_right}' $y)'"
 		eval "print_chunks $x_range,$y"
 	done
+
+	status="$player_x,$player_y"
+	# draw the status in a half-box at the top-right corner
+	status+="\e(0x\n$(repeat_str q ${#status})j\e(B\n"
+	echo -ne "\e7\e[1;1H$status\e8"
 
 	draw_players $width $height \
 		$full_left $full_top $full_right $full_bottom

@@ -213,7 +213,8 @@ draw_map() {
 	((chunk_right=chunk_left + width/chunk_width))
 	((chunk_bottom=chunk_top + height/chunk_height))
 
-	echo viewport: $viewport_left,$viewport_top .. $viewport_right,$viewport_bottom
+	echo $player_x,$player_y
+	#echo viewport: $viewport_left,$viewport_top .. $viewport_right,$viewport_bottom
 	#echo viewport x $viewport_left $viewport_right
 	#echo viewport y $viewport_top $viewport_bottom
 	#echo chunk height: $((chunk_bottom-chunk_top))
@@ -223,7 +224,9 @@ draw_map() {
 	#echo chunk x: $chunk_left $chunk_right
 	#echo chunk y: $chunk_top $chunk_bottom
 	#echo chunks: $chunk_left,$chunk_top .. $chunk_right,$chunk_bottom
-	echo chunk width: $(((chunk_right-chunk_left)*chunk_width)) $width
+	#echo chunk width: $(((chunk_right-chunk_left)*chunk_width)) $width
+	((chunks_height=(chunk_bottom-chunk_top)*chunk_height))
+	#echo chunk height: $chunks_height $height
 
 	#echo chunk y: $chunk_top $chunk_bottom
 	x_range="{$chunk_left..$chunk_right}"
@@ -236,6 +239,7 @@ draw_map() {
 
 	#echo chunk x: {$chunk_left..$chunk_right}
 	#echo chunk y: {$chunk_top..$chunk_bottom}
+	return $((height-chunks_height))
 }
 
 repeat_str() {
@@ -246,7 +250,7 @@ repeat_str() {
 redraw() {
 	cols=$(tput cols)
 	lines=$(tput lines)
-	local log_height=5
+	local log_height=4
 
 	# erase display
 	echo -ne "\e[2J"
@@ -254,6 +258,8 @@ redraw() {
 	pos_cursor 0 0
 
 	draw_map 0 0 $((cols-1)) $((lines-log_height-1))
+	extra_lines=$?
+	((log_height+=extra_lines))
 
 	echo -ne '\e(0'
 	repeat_str q $cols

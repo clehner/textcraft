@@ -29,7 +29,7 @@ echo $player_id new $client_sock >&3
 	echo conn disconnected
 	rm "$client_sock"
 } &
-trap "rm $client_sock; kill -9 $!" 0
+trap "echo ok; rm $client_sock; kill -9 $!; exit" 0 INT
 
 # Transfer user commands to server
 {
@@ -37,6 +37,5 @@ trap "rm $client_sock; kill -9 $!" 0
 	do echo $player_id $cmd
 	done
 	echo $player_id quit
+	echo done >>/tmp/blahasdf
 } >&3
-
-echo done

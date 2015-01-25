@@ -55,6 +55,7 @@ handle_new() {
 	client_socks[$client_id]=$sock
 	write_client $client_id conn connected
 	write_client $client_id id $client_id
+	echo join "(${#client_socks[@]})" $client_id
 }
 
 # Client quit
@@ -62,6 +63,7 @@ handle_quit() {
 	local client_id="$1"
 	unset client_socks[$client_id]
 	write_clients quit $client_id
+	echo quit "(${#client_socks[@]})" $client_id
 }
 
 # Player wants to move

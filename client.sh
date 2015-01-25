@@ -21,8 +21,7 @@ RESET="\e[0m"
 parent_pid=$$
 
 exit_child() {
-	echo
-	kill $parent_pid
+	kill -TERM $parent_pid
 	exit
 }
 
@@ -73,44 +72,38 @@ player_send_chat() {
 }
 
 user_chat() {
-	stty echo
 	echo chat_start
 	read -r msg
 	echo chat_send $msg
-	stty -echo
 }
 
-stty -echo
-fix_color() {
-	stty echo
-}
-trap fix_color 0
-trap 'exit' TERM
-
-confirm() {
-	echo $@
+user_confirm() {
+	echo confirm $@
 	read -rn1 resp && case $resp in y|Y|'') return 0; esac
 	return 1
 }
 
-confirm_restart() {
-	if confirm 'Really restart? [Y/n]'
+user_quit() {
+	if user_confirm 'Really quit? [Y/n]'
 	then
-		# close socket
-		kill $child_pid
-		# restart the program
-		exec "$0" $client_args
+		exec 3>&-
+		kill -TERM $child_pid $parent_pid
 	fi
 }
 
-confirm_quit() {
-	if confirm 'Really quit? [Y/n]'
+user_restart() {
+	if user_confirm 'Really restart? [Y/n]'
 	then
-		kill $child_pid
-		echo
-		exit
+		exec 3>&-
+		# close socket
+		kill -TERM $child_pid
+		# restart the program
+		echo restart
 	fi
 }
+
+#trap 'exit' TERM
+#trap "exec 3>&-" 0
 
 {
 	# Read commands from server
@@ -119,9 +112,10 @@ confirm_quit() {
 		exit_child
 	} &
 	child_pid=$!
+	#echo sed pid $child_pid >&2
 
 	# Read from user's keyboard
-	while read -rn 1 char
+	while read -srn 1 char
 	do
 		case "$char" in
 			j) echo move 1 0;;
@@ -129,13 +123,15 @@ confirm_quit() {
 			h) echo move 0 -1;;
 			l) echo move 0 1;;
 			t) user_chat;;
-			r) echo restart;;
-			q) echo quit;;
+			r) user_restart;;
+			q) user_quit;;
 		esac
 	done
 
 # Multiplex server and user input so that all state is handled in one subshell.
-} | while read -r cmd args
+} | {
+	#trap "kill -TERM $parent_pid; exec 3>&-" 0
+while read -r cmd args
 do
 	set -- "$args"
 	case "$cmd" in 
@@ -152,8 +148,18 @@ do
 		move) player_move "$@";;
 		chat_start) echo -n "<$player_id> ";;
 		chat_send) player_send_chat $@;;
-		quit) confirm_quit;;
-		restart) confirm_restart;;
+		confirm) echo -n $@;;
+		echo) echo $$ $@;;
+		quit) echo exiting $parent_pid
+			#kill -INT $parent_pid
+			#kill -TERM $parent_pid
+			#exec 3>&-
+			break;;
+		restart) echo restarting;;
 		*) echo unknown $cmd $args
 	esac
 done
+}
+
+# restart
+#exec "$0" $client_args

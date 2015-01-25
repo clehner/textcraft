@@ -12,8 +12,10 @@ cleanup() {
 
 if hash ncat 2>&- >&-
 then NC='ncat -k'
-else NC='nc --continuous'
-fi
+else if nc -h 2>&1 | grep -q -- --continuous
+then NC='nc --continuous'
+else echo 'Your version of netcat is not supported!'; exit 1
+fi fi
 
 echo Starting network server on port ${PORT:=9000}
 {

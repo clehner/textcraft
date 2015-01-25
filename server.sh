@@ -22,6 +22,7 @@ declare -A client_socks
 # player positions
 declare -A players_x
 declare -A players_y
+declare -A players_direction
 
 cleanup() {
 	echo Closing client pipes
@@ -71,6 +72,7 @@ handle_new() {
 	local sock="$2"
 	local x=0
 	local y=0
+	local direction=up
 
 	# Tell other players about new client
 	write_clients join $client_id
@@ -78,16 +80,17 @@ handle_new() {
 	client_socks[$client_id]=$sock
 	players_x[$client_id]=$x
 	players_y[$client_id]=$y
+	players_direction[$client_id]=$direction
 
 	write_client $client_id conn connected
-	write_client $client_id player_info $client_id $x $y
+	write_client $client_id player_info $client_id $x $y $direction
 	write_client $client_id info $version \
 		$chunk_width $chunk_height
 	
 	# tell player about other players
 	for player in "${!client_socks[@]}"
-	do write_client $client_id pos $player \
-		${players_x[$player]} ${players_y[$player]}
+	do write_client $client_id pos $player ${players_x[$player]} ${players_y[$player]} ${players_direction[$player]}
+		#${players_{x,y,direction}[$player]}
 	done
 
 	echo join "(${#client_socks[@]})" $client_id $x $y
@@ -99,23 +102,37 @@ handle_quit() {
 	unset client_socks[$client_id]
 	unset players_x[$client_id]
 	unset players_y[$client_id]
+	unset players_direction[$client_id]
 	write_clients quit $client_id
 	echo quit "(${#client_socks[@]})" $client_id
 }
 
-# Player wants to move
+# Player wants to move in a direction
 handle_move() {
 	local client_id="$1"
-	local dx="$2"
-	local dy="$3"
-
-	# update position
-	((x=players_x[$client_id]=players_x[$client_id]+dx))
-	((y=players_y[$client_id]=players_y[$client_id]+dy))
+	local direction="$2"
+	local dx=
+	local dy=0
 
 	# TODO: verify that move is valid
-	echo client $client_id moved to $x $y
-	write_clients pos $client_id $x $y
+
+	if [[ "$direction" == "${players_direction[$client_id]}" ]]
+	then
+		# move in same direction
+		case $direction in
+			up) ((players_y[$client_id]--));;
+			down) ((players_y[$client_id]++));;
+			left) ((players_x[$client_id]--));;
+			right) ((players_x[$client_id]++));;
+		esac
+	else
+		# change direction
+		players_direction[$client_id]=$direction
+	fi
+
+	echo client $client_id moved $direction
+	write_clients pos $client_id \
+		${players_x[$client_id]} ${players_y[$client_id]} $direction
 }
 
 # Player sent chat

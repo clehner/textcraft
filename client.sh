@@ -33,10 +33,15 @@ chunk_height=
 player_id=
 player_x=
 player_y=
+player_direction=
 
 # player positions
 declare -A players_x
 declare -A players_y
+declare -A players_direction
+
+declare -A dir_icons
+dir_icons=([up]='^' [down]='v' [left]='<' [right]='>')
 
 # viewer info
 cols=
@@ -98,6 +103,7 @@ handle_quit() {
 	local sender_id="$1"
 	unset players_x[$sender_id]
 	unset players_y[$sender_id]
+	unset players_direction[$sender_id]
 	echo "$sender_id left the game"
 }
 
@@ -106,14 +112,17 @@ handle_position() {
 	local sender_id="$1"
 	local x="$2"
 	local y="$3"
+	local direction="$4"
 
 	players_x[$sender_id]=$x
 	players_y[$sender_id]=$y
+	players_direction[$sender_id]=$direction
 
 	if [[ $sender_id == $player_id ]]
 	then
 		player_x=$x
 		player_y=$y
+		player_direction=$direction
 	fi
 }
 
@@ -129,7 +138,7 @@ server_write() {
 }
 
 player_move() {
-	server_write move "$1" "$2"
+	server_write move "$*"
 }
 
 player_send_chat() {
@@ -183,9 +192,9 @@ print_chunks() {
 			# use blank chunk temporarily
 			echo "$empty_chunk" > "$file"
 			# ask server for chunk
-			missing_chunks="$missing_chunks $chunk"
+			missing_chunks+=" $chunk"
 		fi
-		chunk_files="$chunk_files $file"
+		chunk_files+=" $file"
 	done
 
 	request_chunks "$missing_chunks"
@@ -201,21 +210,29 @@ pos_cursor() {
 
 # Superimpose players onto map
 draw_players() {
-	local offset_x="$1"
-	local offset_y="$2"
+	local width="$1"
+	local height="$2"
 	local left="$3"
 	local top="$4"
 	local right="$5"
 	local bottom="$6"
-	local x y
+	local x y direction icon
 
 	for player_id in "${!players_x[@]}"
 	do
 		# get position of player relative to viewport
 		((x=players_x[$player_id]-left))
 		((y=players_y[$player_id]-top))
+
+		# check bounds
+		((x < 0 || x > width || y < 0 || y > height)) && continue
+
+		direction="${players_direction[$player_id]}"
+		icon="${dir_icons[$direction]}"
+
 		# save cursor, move to point, plot character, restore cursor
-		echo -ne "\e7\e[${y};${x}H@\e8"
+		
+		echo -ne "\e7\e[${y};${x}H${icon}\e8"
 	done
 }
 
@@ -287,7 +304,7 @@ draw_map() {
 		eval "print_chunks $x_range,$y"
 	done
 
-	draw_players $((width/2)) $((height/2)) \
+	draw_players $width $height \
 		$full_left $full_top $full_right $full_bottom
 
 	# return unused space
@@ -309,7 +326,7 @@ redraw() {
 	#echo -ne "\e[2J\ec"
 	pos_cursor 0 0
 
-	draw_map 0 0 $((cols-1)) $((lines-log_height-1))
+	draw_map 0 0 $((cols-2)) $((lines-log_height-1))
 	extra_lines=$?
 	((log_height+=extra_lines))
 
@@ -340,12 +357,16 @@ cleanup() {
 	while read -srn 1 char
 	do
 		case "$char" in
-			j) echo move 0 1;;
-			k) echo move 0 -1;;
-			h) echo move -1 0;;
-			l) echo move 1 0;;
+			j) echo move down;;
+			k) echo move up;;
+			h) echo move left;;
+			l) echo move right;;
 			c) echo chunk;;
 			t) user_chat;;
+			#w) echo dir 0;;
+			#a) echo dir 1;;
+			#s) echo dir 2;;
+			#d) echo dir 3;;
 			#r) user_restart;;
 			#q) user_quit;;
 		esac

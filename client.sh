@@ -46,10 +46,7 @@ handle_chat() {
 # A user joined
 handle_join() {
 	local sender_id="$1"
-	local x="$2"
-	local y="$3"
-	players_x[$sender_id]=$x
-	players_y[$sender_id]=$y
+	handle_position $@
 	echo "$sender_id joined the game"
 }
 
@@ -61,17 +58,23 @@ handle_quit() {
 	echo "$sender_id left the game"
 }
 
+# A user moved
+handle_position() {
+	local sender_id="$1"
+	local x="$2"
+	local y="$3"
+
+	players_x[$sender_id]=$x
+	players_y[$sender_id]=$y
+	echo $sender_id moved to $x $y
+}
+
 server_write() {
 	echo $@ >&3
 }
 
 player_move() {
 	server_write move "$1" "$2"
-	case "$1 $2" in
-		"-1 0")
-			#echo -e "\e[<3>Aok"
-			;;
-	esac
 }
 
 player_send_chat() {
@@ -138,7 +141,7 @@ user_restart() {
 
 # Multiplex server and user input so that all state is handled in one subshell.
 } | {
-	#trap "kill -TERM $parent_pid; exec 3>&-" 0
+	trap "kill -TERM $parent_pid; exec 3>&-" 0
 while read -r cmd args
 do
 	set -- "$args"
@@ -148,7 +151,7 @@ do
 		s_conn) handle_connection_status "$1";;
 		s_join) handle_join "$@";;
 		s_quit) handle_quit "$@";;
-		s_pos) echo pos! $1 $2;;
+		s_pos) handle_position $@;;
 		s_id) player_id="$@";;
 		s_*) echo "<server> $cmd $@";;
 

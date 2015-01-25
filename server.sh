@@ -84,11 +84,12 @@ handle_move() {
 	local dy="$3"
 
 	# update position
-	((y=players_y[client_id]=dy+players_y[client_id]))
-	((x=players_x[client_id]=dx+players_x[client_id]))
+	((x=players_x[$client_id]=players_x[$client_id]+dx))
+	((y=players_y[$client_id]=players_y[$client_id]+dy))
 
 	# TODO: verify that move is valid
-	write_client $client_id pos $x $y
+	echo client $client_id moved to $x $y
+	write_clients pos $client_id $x $y
 }
 
 # Player sent chat

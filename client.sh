@@ -283,7 +283,8 @@ draw_map() {
 
 	((chunk_left=viewport_left/chunk_width))
 	((chunk_top=viewport_top/chunk_height))
-	((chunk_right=chunk_left + width/chunk_width))
+	((chunk_right=chunk_left + width/chunk_width - 1))
+	#((chunk_right=viewport_right/chunk_width-1))
 	((chunk_bottom=chunk_top + height/chunk_height))
 
 	((full_left=chunk_left*chunk_width))
@@ -318,7 +319,7 @@ draw_map() {
 	status+="\e(0x\n$(repeat_str q ${#status})j\e(B\n"
 	echo -ne "\e7\e[1;1H$status\e8"
 
-	draw_players $width $height \
+	draw_players $width $chunks_height \
 		$full_left $full_top $full_right $full_bottom
 
 	# return unused space
@@ -340,7 +341,7 @@ redraw() {
 	#echo -ne "\e[2J\ec"
 	pos_cursor 0 0
 
-	draw_map 0 0 $((cols-2)) $((lines-log_height-1))
+	draw_map 0 0 $((cols)) $((lines-log_height-1))
 	extra_lines=$?
 	((log_height+=extra_lines))
 

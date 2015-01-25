@@ -130,7 +130,6 @@ handle_move() {
 		players_direction[$client_id]=$direction
 	fi
 
-	echo client $client_id moved $direction
 	write_clients pos $client_id \
 		${players_x[$client_id]} ${players_y[$client_id]} $direction
 }

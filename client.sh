@@ -20,6 +20,9 @@ chunks_dir=$(mktemp -d)
 
 YELLOW="\e[1;33m"
 COLOR_BG_BLACK="\e[40m"
+COLOR_BG_GREEN="\e[42m"
+COLOR_BG_CYAN="\e[46m"
+COLOR_FG_BLUE="\e[34m"
 COLOR_RESET="\e[0m"
 
 parent_pid=$$
@@ -216,19 +219,24 @@ draw_players() {
 	local top="$4"
 	local right="$5"
 	local bottom="$6"
-	local x y direction icon
+	local x y direction icon color
 
-	for player_id in "${!players_x[@]}"
+	for id in "${!players_x[@]}"
 	do
 		# get position of player relative to viewport
-		((x=players_x[$player_id]-left))
-		((y=players_y[$player_id]-top))
+		((x=players_x[$id]-left))
+		((y=players_y[$id]-top))
 
 		# check bounds
 		((x < 0 || x > width || y < 0 || y > height)) && continue
 
-		direction="${players_direction[$player_id]}"
-		icon="${dir_icons[$direction]}"
+		if [[ $id == $player_id ]]
+		then color=$COLOR_FG_BLUE$COLOR_BG_GREEN
+		else color=$COLOR_FG_BLUE$COLOR_BG_CYAN
+		fi
+
+		direction="${players_direction[$id]}"
+		icon="$color${dir_icons[$direction]}$COLOR_RESET"
 
 		# save cursor, move to point, plot character, restore cursor
 		

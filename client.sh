@@ -177,30 +177,46 @@ draw_map() {
 
 	# get viewport map rect
 	((viewport_left=player_x-(width/2)))
+	((viewport_right=player_x+(width/2)))
 	((viewport_top=player_y-(height/2)))
-	((viewport_right=player_x+(width/2)-1))
-	((viewport_bottom=player_y+(height/2)-1))
+	((viewport_bottom=player_y+(height/2)))
+
+	echo height $height $((viewport_bottom-viewport_top))
 
 	#echo player: $player_x $player_y
 
 	#echo viewport x: $viewport_left $viewport_right
 	#echo viewport y: $viewport_top $viewport_bottom
 
-	# get viewport chunk rect
-	((chunk_left=viewport_left/chunk_width))
-	((chunk_top=viewport_top/chunk_height))
-	((chunk_right=viewport_right/chunk_width))
-	((chunk_bottom=viewport_bottom/chunk_height))
-
-	((clip_top=viewport_top % chunk_height))
+	# calculate amount that needs to be trimmed
 	((clip_left=viewport_left % chunk_width))
 	((clip_right=viewport_right % chunk_width))
+	((clip_top=viewport_top % chunk_height))
 	((clip_bottom=viewport_bottom % chunk_height))
 
-	#echo chunk height: $((chunk_top-chunk_bottom))
-	#echo chunk width: $((chunk_right-chunk_left))
-	#echo clip x: $clip_left $clip_right
-	#echo clip y: $clip_top $clip_bottom
+	# correct sign differences
+	((viewport_left < 0)) && ((clip_left=chunk_width-clip_left))
+	#((viewport_right > 0)) &&
+	((clip_right=chunk_width-clip_right))
+
+	((viewport_top < 0)) && ((clip_top=chunk_height-clip_top))
+	#((viewport_bottom > 0)) &&
+	#((clip_bottom=chunk_height-clip_bottom))
+
+	((chunk_left=viewport_left/chunk_width))
+	((chunk_right=viewport_right/chunk_width))
+	((chunk_top=viewport_top/chunk_height))
+	((chunk_bottom=viewport_bottom/chunk_height))
+
+	echo viewport x $viewport_left $viewport_right
+	echo chunk height: $((chunk_bottom-chunk_top))
+	echo chunk width: $((chunk_right-chunk_left))
+	echo clip x: $clip_left $clip_right
+	echo clip y: $clip_top $clip_bottom
+	echo size: $(((chunk_right-chunk_left)*chunk_width))\
+		$(((chunk_bottom-chunk_top)*chunk_height))
+	echo sum x: $((clip_left+clip_right+(chunk_right-chunk_left)*chunk_width))
+	echo sum y: $((clip_top+clip_bottom+(chunk_bottom-chunk_top)*chunk_height))
 	#echo sums: $((clip_top+clip_bottom)) $((clip_left+clip_right))
 
 	for ((y=chunk_top; y<chunk_bottom; y++))
@@ -208,7 +224,7 @@ draw_map() {
 		:
 		#local files
 		#eval "files='print_chunk '{$chunk_left..$chunk_right}' $y'"
-		print_chunk $chunk_left $y
+		#print_chunk $chunk_left $y
 	done
 
 	#echo chunk x: {$chunk_left..$chunk_right}
@@ -252,10 +268,10 @@ cleanup() {
 	while read -srn 1 char
 	do
 		case "$char" in
-			j) echo move 1 0;;
-			k) echo move -1 0;;
-			h) echo move 0 -1;;
-			l) echo move 0 1;;
+			j) echo move 0 1;;
+			k) echo move 0 -1;;
+			h) echo move -1 0;;
+			l) echo move 1 0;;
 			t) user_chat;;
 			#r) user_restart;;
 			#q) user_quit;;
@@ -293,7 +309,9 @@ do
 		restart) echo restarting;;
 		*) echo unknown $cmd $args
 	esac >&5
-	redraw
+
+	# buffer redraw
+	redraw | sed 'H;$!d;x'
 done
 }
 

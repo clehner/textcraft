@@ -87,8 +87,7 @@ handle_join() {
 # Get initial player info from server
 handle_player_info() {
 	player_id="$1"
-	player_x="$2"
-	player_y="$3"
+	handle_position $*
 }
 
 # A user quit
@@ -198,27 +197,13 @@ draw_players() {
 	local bottom="$6"
 	local x y
 
-	# get position of player relative to viewport
-	((x=player_x-left))
-	((y=player_y-top))
-
-	# save cursor
-	echo -ne '\e7'
-
-	# set character
-	pos_cursor $x $y
-	echo -n '@'
-	
-	# restore cursor
-	echo -ne '\e8'
-	return
-
-	for player_id in "${players_x[@]}"
+	for player_id in "${!players_x[@]}"
 	do
-
-		${players_x[$player_id]}
-		${players_y[$player_id]}
-
+		# get position of player relative to viewport
+		((x=players_x[$player_id]-left))
+		((y=players_y[$player_id]-top))
+		# save cursor, move to point, plot character, restore cursor
+		echo -ne "\e7\e[${y};${x}H@\e8"
 	done
 }
 

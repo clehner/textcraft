@@ -193,6 +193,7 @@ draw_map() {
 	((clip_right=viewport_right % chunk_width))
 	((clip_top=viewport_top % chunk_height))
 	((clip_bottom=viewport_bottom % chunk_height))
+	#((clip_bottom=chunk_height - (viewport_bottom-(chunk_bottom*chunk_height))))
 
 	# correct sign differences
 	((viewport_left < 0)) && ((clip_left=chunk_width-clip_left))
@@ -200,8 +201,11 @@ draw_map() {
 	((clip_right=chunk_width-clip_right))
 
 	((viewport_top < 0)) && ((clip_top=chunk_height-clip_top))
-	#((viewport_bottom > 0)) &&
-	#((clip_bottom=chunk_height-clip_bottom))
+
+	if ((viewport_bottom > 0))
+	then ((clip_bottom=chunk_height-clip_bottom))
+	else ((clip_bottom=chunk_height+clip_bottom))
+	fi
 
 	((chunk_left=viewport_left/chunk_width))
 	((chunk_right=viewport_right/chunk_width))
@@ -213,11 +217,7 @@ draw_map() {
 	echo chunk width: $((chunk_right-chunk_left))
 	echo clip x: $clip_left $clip_right
 	echo clip y: $clip_top $clip_bottom
-	echo size: $(((chunk_right-chunk_left)*chunk_width))\
-		$(((chunk_bottom-chunk_top)*chunk_height))
-	echo sum x: $((clip_left+clip_right+(chunk_right-chunk_left)*chunk_width))
-	echo sum y: $((clip_top+clip_bottom+(chunk_bottom-chunk_top)*chunk_height))
-	#echo sums: $((clip_top+clip_bottom)) $((clip_left+clip_right))
+	echo height: $(((chunk_bottom-chunk_top)*chunk_height - clip_top - clip_bottom))
 
 	for ((y=chunk_top; y<chunk_bottom; y++))
 	do

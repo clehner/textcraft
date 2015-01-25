@@ -229,7 +229,14 @@ draw_map() {
 	local files
 	local header_height=2
 	((height -= header_height))
-	
+
+	if ((chunk_height==0))
+	then
+		for ((i=0; i<height; i++))
+		do echo
+		done
+		return
+	fi
 
 	# get viewport map rect
 	((viewport_left=player_x-(width/2)))
@@ -377,7 +384,7 @@ do
 	esac >&5
 
 	# buffer redraw
-	redraw | sed 'H;$!d;x'
+	redraw 2>&5 | sed 'H;$!d;x'
 done
 }
 
